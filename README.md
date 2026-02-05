@@ -23,6 +23,14 @@ uv sync
 
 ## Guide to run the code
 
+1. Retrieve the tiny shakespeare dataset (1.1MB)
+
+```bash
+wget -c https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
+```
+
+2. Train the GPT-2 model from the scratch
+
 ```bash
 python train_gpt2.py
 ```
