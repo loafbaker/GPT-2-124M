@@ -4,4 +4,5 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
 
 - **v0.1.0**: sample, auto-detect the device
 - **v0.2.0**: optimization loop: overfit a single batch
-- **v0.3.0 (current version)**: data loader lite
+- **v0.3.0**: data loader lite
+- **v0.4.0 (current version)**: model initialization: std 0.02, residual init
