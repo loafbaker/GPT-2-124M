@@ -228,6 +228,9 @@ if torch.cuda.is_available():
 
 train_loader = DataLoaderLite(B=16, T=1024)
 
+# utilize the TensorFloat-32 (TF32) precision in GPU (Ampere architecture or above)
+torch.set_float32_matmul_precision('high')
+
 # get logits
 model = GPT(GPTConfig())
 model.to(device)
