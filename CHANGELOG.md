@@ -6,10 +6,12 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
 - **v0.2.0**: optimization loop: overfit a single batch
 - **v0.3.0**: data loader lite
 - **v0.4.0**: model initialization: std 0.02, residual init
-- **v0.5.0 and v0.5.1 (current version)**: Tensor Cores, timing the code, TF32 precision, 333ms
+- **v0.5.0 and v0.5.1**: Tensor Cores, timing the code, TF32 precision, 333ms
+- **v0.5.2 (current version)**: float16, gradient scalers, bfloat16, 300ms
   - Benchmark results on my server (NVIDIA L40 × 4):
 
     | dtype    | dt (ms) | tok/sec  |
     |:--------:|--------:|---------:|
     | float32  | 904.37  | 18514.44 |
     | tfloat32 | 688.66  | 23887.96 |
+    | bfloat16 | 532.77  | 30940.47 |
