@@ -1,6 +1,6 @@
 [project]
 name = "gpt-2-124m"
-version = "0.5.2"
+version = "0.6.0"
 description = "Reproduce a simplified version of GPT-2 (124M) following Andrej Karpathy's tutorial"
 readme = "README.md"
 requires-python = ">=3.8"

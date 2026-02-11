@@ -234,7 +234,7 @@ torch.set_float32_matmul_precision('high')
 # get logits
 model = GPT(GPTConfig())
 model.to(device)
-# logits, loss = model(x, y)
+model = torch.compile(model)
 
 # optimization
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
