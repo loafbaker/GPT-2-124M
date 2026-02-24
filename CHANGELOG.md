@@ -8,7 +8,7 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
 - **v0.4.0**: model initialization: std 0.02, residual init
 - **v0.5.0 and v0.5.1**: Tensor Cores, timing the code, TF32 precision, 333ms
 - **v0.5.2**: float16, gradient scalers, bfloat16, 300ms
-- **v0.6.0 (current version)**: torch.compile, Python overhead, kernel fusion, 130ms
+- **v0.6.0**: torch.compile, Python overhead, kernel fusion, 130ms
   - Benchmark results on my server (NVIDIA L40 × 4):
 
     | dtype    | torch.compile? | dt (ms) | tok/sec  |
@@ -17,3 +17,10 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
     | tfloat32 | No             | 688.66  | 23887.96 |
     | bfloat16 | No             | 532.77  | 30940.47 |
     | bfloat16 | Yes            | 1058.92 | 56368.43 |
+
+- **v0.7.0 (current version)**: flash attention, 96ms
+  - Benchmark results on my server (NVIDIA L40 × 4):
+
+    | dtype    | acceleration    | dt (ms) | tok/sec  |
+    |:--------:|:---------------:|--------:|---------:|
+    | bfloat16 | flash attention | 595.63  | 83282.33 |
