@@ -27,4 +27,5 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
     | bfloat16 | flash attention    | 595.63  | 83282.33 |
     | bfloat16 | optimal vocab size | 559.83  | 91033.51 |
 
-- **v0.9.0 (current version)**: SECTION 3: hyperpamaters, AdamW, gradient clipping
+- **v0.9.0**: SECTION 3: hyperpamaters, AdamW, gradient clipping
+- **v0.10.0 (current version)**: learning rate scheduler: warmup + cosine decay
