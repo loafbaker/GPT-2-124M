@@ -23,13 +23,41 @@ uv sync
 
 ## Guide to run the code
 
-### 1. Retrieve the tiny shakespeare dataset (1.1MB)
+### 1. Prepare for the training data
+
+#### 1.1 Download and tokenize the Fineweb-EDU dataset for training
+
+> **Note:** This instruction works with **version ≥ 0.14.0**.
+
+Run the following script to download and tokenize the [FineWeb-EDU dataset](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu):
+
+```bash
+python fineweb.py
+```
+
+After the script finishes, the processed dataset shards will be stored in:
+
+```
+./edu_fineweb10B
+```
+
+The total size of the generated data files is approximately **19GB**.
+
+#### 1.2 Download the tiny shakespeare dataset
+
+> **Note:** This instruction works with **version ≤ 0.13.0**.
+
+You can download the Tiny Shakespeare dataset with:
 
 ```bash
 wget -c https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
 ```
 
+The data file is pretty small, with a size of **~1.1MB**.
+
 ### 2. Train the GPT-2 model from the scratch
+
+> **Note:** The `micro batch size` parameter (`B`) can be tuned according to the performance of your current system. In my script, it is set to `32` based on the specifications of my GPU server.
 
 #### 2.1 Single-GPU training
 
@@ -49,9 +77,9 @@ uv run train_gpt2.py
 torchrun --standalone --nproc_per_node=4 train_gpt2.py
 ```
 
-Note: `--nproc_per_node=4` specifies the number of GPUs to use for training. Adjust this value according to the number of GPUs available on your system.
+> **Note:** `--nproc_per_node=4` specifies the number of GPUs to use for training. Adjust this value according to the number of GPUs available on your system.
 
-Note: When using `uv`, prefix the command with `uv run`.
+> **Note:** When using `uv`, prefix the command with `uv run`.
 
 ## Error handling
 

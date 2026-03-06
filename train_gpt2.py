@@ -7,11 +7,11 @@ from torch.nn import functional as F
 
 @dataclass
 class GPTConfig:
-    block_size: int = 1024  # max sequence lenght # 256
-    vocab_size: int = 50257  # number of tokens; 50,000 BPE merges + 256 bytes tokens + 1 <|endoftext|> token # 65
-    n_layer: int = 12  # number of layers # 6
-    n_head: int = 12  # number of heads # 6
-    n_embed: int = 768  # embedding dimension # 384
+    block_size: int = 1024  # max sequence lenght
+    vocab_size: int = 50257  # number of tokens; 50,000 BPE merges + 256 bytes tokens + 1 <|endoftext|> token
+    n_layer: int = 12  # number of layers
+    n_head: int = 12  # number of heads
+    n_embed: int = 768  # embedding dimension
 
 # --------------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ class CausalSelfAttention(nn.Module):
 
     def forward(self, x):
         B, T, C = x.size()  # batch_size, sequence length, embedding dimensionality (n_embed)
-        # calculate queries, keys, values for all heads in batch and move head forward to be the batch
+        # calculate queries, keys, values for all heads in batch and move head forward to be the batch dim
         # nh is the "number of head", hs is the "head size", and C (number of channels) = nh * ns
         # e.g. in GPT-2 (124M), n_head = 12, hs = 64, so nh * hs = C = 768 channels in the Transformer
         qkv = self.c_attn(x)
@@ -99,7 +99,7 @@ class GPT(nn.Module):
 
         # weight sharing scheme
         self.transformer.wte.weight = self.lm_head.weight
-        
+
         # init params
         self.apply(self._init_weights)
 
@@ -117,7 +117,7 @@ class GPT(nn.Module):
     def forward(self, idx, targets=None):
         # idx is of shape (B, T)
         B, T = idx.size()
-        assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is {B}"
+        assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
         # forward the token and position embeddings
         pos = torch.arange(0, T, dtype=torch.long, device=idx.device)  # shape (T)
         pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (T, n_embed)
@@ -155,7 +155,7 @@ class GPT(nn.Module):
         model = GPT(config)
         sd = model.state_dict()
         sd_keys = sd.keys()
-        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')]  # discard this mask / buffer
+        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')]  # discard this mask / buffer, not a param
 
         # init a huggingface/transformers model
         model_hf = GPT2LMHeadModel.from_pretrained(model_type)
@@ -163,10 +163,10 @@ class GPT(nn.Module):
 
         # copy while ensuring all of the parameters are aligned and match in names and shapes
         sd_keys_hf = sd_hf.keys()
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')]
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')]
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')]  # ignore these, just a buffer
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')]         # same, just the mask (buffer)
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
-        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Conv1D
+        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         # this means that we have to transpose these weights when we import them
         assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
         for k in sd_keys_hf:
@@ -209,24 +209,38 @@ class GPT(nn.Module):
         return optimizer
 
 # --------------------------------------------------------------------------------
+import numpy as np
+import os
 import tiktoken
 
+def load_tokens(filename):
+    npt = np.load(filename)
+    npt = npt.astype(np.int32)
+    ptt = torch.tensor(npt, dtype=torch.long)
+    return ptt
+
 class DataLoaderLite:
-    def __init__(self, B, T, process_rank, num_processes):
+    def __init__(self, B, T, process_rank, num_processes, split):
         self.B = B
         self.T = T
         self.process_rank = process_rank
         self.num_processes = num_processes
+        assert split in ('train', 'val')
 
-        # at init load tokens from disk and store them in memory
-        with open('input.txt', 'r') as f:
-            text = f.read()
-        enc = tiktoken.get_encoding('gpt2')
-        tokens = enc.encode(text)
-        self.tokens = torch.tensor(tokens)
-        print(f"loaded {len(self.tokens)} tokens")
+        # get the shard filenames
+        data_root = "edu_fineweb10B"
+        shards = os.listdir(data_root)
+        shards = [s for s in shards if split in s]
+        shards = sorted(shards)
+        shards = [os.path.join(data_root, s) for s in shards]
+        self.shards = shards
+        assert len(shards) > 0, f"no shards found for split {split}"
+        if master_process:
+            print(f"found {len(shards)} shards for split {split}")
 
-        # state
+        # state, init at shard zero
+        self.current_shard = 0
+        self.tokens = load_tokens(self.shards[self.current_shard])
         self.current_position = self.B * self.T * self.process_rank
 
     def next_batch(self):
@@ -236,14 +250,15 @@ class DataLoaderLite:
         y = (buf[1:]).view(B, T)   # targets
         # advance the position in the tensor
         self.current_position += B * T * self.num_processes
-        # if loading the next batch would be out of bounds, reset
+        # if loading the next batch would be out of bounds, advance to the next shard
         if self.current_position + (B * T + 1) > len(self.tokens):
+            self.current_shard = (self.current_shard + 1) % len(self.shards)
+            self.tokens = load_tokens(self.shards[self.current_shard])
             self.current_position = self.B * self.T * self.process_rank
         return x, y
 
 # --------------------------------------------------------------------------------
 # attempt to autodetect the device
-import os
 import time
 
 # simple lanuch:
@@ -291,7 +306,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(1337)
 
 total_batch_size = 524288  # 2**19, ~0.5M, in number of tokens
-B = 16                     # micro batch size
+B = 32                     # micro batch size
 T = 1024                   # sequence length
 assert total_batch_size % (B * T * ddp_world_size) == 0, "make sure total_batch_size is divisible by B * T * ddp_world_size"
 grad_accum_steps = total_batch_size // (B * T * ddp_world_size)
@@ -299,7 +314,7 @@ if master_process:
     print(f"total desired batch size: {total_batch_size}")
     print(f"=> calculated gradient accumulation steps: {grad_accum_steps}")
 
-train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size)
+train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='train')
 
 # utilize the TensorFloat-32 (TF32) precision in GPU (Ampere architecture or above)
 torch.set_float32_matmul_precision('high')
@@ -315,8 +330,8 @@ raw_model = model.module if ddp else model  # always contains the "raw" unwrappe
 # learning rate decay
 max_lr = 6e-4
 min_lr = max_lr * 0.1
-warmup_steps = 10
-max_steps = 50
+warmup_steps = 715
+max_steps = 19073
 def get_lr(it):
     # 1) linear warmup for warmup_iters steps
     if it < warmup_steps:
@@ -341,6 +356,9 @@ for step in range(max_steps):
     for micro_step in range(grad_accum_steps):
         x, y = train_loader.next_batch()
         x, y = x.to(device), y.to(device)
+        # this field is also used by the forward pass
+        if ddp:
+            model.require_backward_grad_sync = (micro_step == grad_accum_steps - 1)
         # utilize the BF16 precision in GPU (Ampere architecture or above)
         with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
             logits, loss = model(x, y)
@@ -350,8 +368,6 @@ for step in range(max_steps):
         # but instead of a SUM we want MEAN. Scale thee loss here so it comes out right
         loss = loss / grad_accum_steps
         loss_accum += loss.detach()
-        if ddp:
-            model.require_backward_grad_sync = (micro_step == grad_accum_steps - 1)
         loss.backward()
     if ddp:
         dist.all_reduce(loss_accum, op=dist.ReduceOp.AVG)

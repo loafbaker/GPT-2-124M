@@ -31,4 +31,5 @@ Note that these chapter tags are the same as the ones in the original tutorial. 
 - **v0.10.0**: learning rate scheduler: warmup + cosine decay
 - **v0.11.0**: batch size schedule, weight decay, FusedAdamW, 90ms
 - **v0.12.0**: gradient accumulation
-- **v0.13.0 (current version)**: distributed data parallel (DDP)
+- **v0.13.0**: distributed data parallel (DDP)
+- **v0.14.0 (current version)**: datasets used in GPT-2, GPT-3, FineWeb (EDU)
