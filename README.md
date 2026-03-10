@@ -55,9 +55,11 @@ wget -c https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshak
 
 The data file is pretty small, with a size of **~1.1MB**.
 
-### 2. Train the GPT-2 model from the scratch
+### 2. Train the GPT-2 model from scratch (with HellaSwag evaluation)
 
 > **Note:** The `micro batch size` parameter (`B`) can be tuned according to the performance of your current system. In my script, it is set to `32` based on the specifications of my GPU server.
+
+> **Note:** `model.compile` has been disabled in **version 0.14.1** due to an unexpected error when evaluating the model by sampling generations.
 
 #### 2.1 Single-GPU training
 
