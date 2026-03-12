@@ -360,7 +360,7 @@ raw_model = model.module if ddp else model  # always contains the "raw" unwrappe
 max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup_steps = 715
-max_steps = 19073
+max_steps = 19073 * 4
 def get_lr(it):
     # 1) linear warmup for warmup_iters steps
     if it < warmup_steps:
@@ -378,7 +378,7 @@ def get_lr(it):
 optimizer = raw_model.configure_optimizers(weight_decay=0.1, learning_rate=6e-4, device=device)
 
 # create the log directory we will write checkpoints to and log to
-log_dir = "log"
+log_dir = "log_4x"
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, "log.txt")
 # open for writing to clear the file
